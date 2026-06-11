@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Хувийн санхүү бүртгэл</title>
-    <!-- Bootstrap 5.3.2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome 6.4.2 Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
     <style>
         body {
@@ -31,31 +29,32 @@
             color: white;
             border-radius: 6px;
         }
-        .badge-income {
-            background-color: #198754;
-            color: white;
-        }
-        .badge-expense {
-            background-color: #dc3545;
-            color: white;
-        }
     </style>
 </head>
-<body>
+<body class="roboto-regular">
 
     <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold" href="#">
                 <i class="fa-solid fa-wallet text-warning me-2"></i> Санхүүгийн самбар
+                <span class="ms-3 fs-6 fw-normal text-white-50"><i class="fa-regular fa-user me-1"></i> <span id="user-email">хэрэглэгч@email.com</span></span>
             </a>
-            <div class="ms-auto text-white-50 small">
-                <button onclick="clearAll()" class="btn btn-sm btn-outline-light rounded-pill px-3">гарах</button>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-warning rounded-pill px-3 fw-medium" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasBudget">
+                    <i class="fa-solid fa-sliders me-1"></i> Төсөв Тогтоох
+                </button>
+                <button id="btn-logout" class="btn btn-sm btn-outline-light rounded-pill px-3">гарах</button>
             </div>
         </div>
     </nav>
 
     <div class="container-fluid px-4">
-        <!-- Үзүүлэлтийн картууд -->
+        
+        <div class="row mb-4">
+            <div class="col-12" id="reward-badge-container">
+                </div>
+        </div>
+
         <div class="row g-3 mb-4">
             <div class="col-lg-4 col-md-6">
                 <div class="card card-blue border-0 shadow-sm p-3">
@@ -78,7 +77,6 @@
         </div>
 
         <div class="row g-4">
-            <!-- Зүүн тал: Форм -->
             <div class="col-lg-4">
                 <div class="card border-0 shadow-sm p-4">
                     <h5 class="fw-bold mb-3">Шинэ гүйлгээ</h5>
@@ -129,7 +127,6 @@
                 </div>
             </div>
 
-            <!-- Баруун тал: Хүснэгт -->
             <div class="col-lg-8">
                 <div class="card border-0 shadow-sm p-4">
                     <h5 class="fw-bold mb-3">Гүйлгээний түүх</h5>
@@ -160,122 +157,42 @@
         </div>
     </div>
 
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasBudget" aria-labelledby="offcanvasBudgetLabel">
+        <div class="offcanvas-header border-b">
+            <h5 class="offcanvas-title fw-bold" id="offcanvasBudgetLabel"><i class="fa-solid fa-sliders text-warning me-2"></i>Сар бүрийн төсөв</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <form id="budget-form" class="mb-4">
+                <div class="mb-3">
+                    <label class="form-label small fw-medium text-secondary">Ангилал</label>
+                    <select class="form-select shadow-sm" id="budget-category" required>
+                        <option value="Хоол хүнс">Хоол хүнс</option>
+                        <option value="Цалин">Цалин орлого</option>
+                        <option value="Тээвэр">Унаа, тээвэр</option>
+                        <option value="Орон байр">Байр, цахилгаан</option>
+                        <option value="Үзвэр үйлчилгээ">Чөлөөт цаг, худалдан авалт</option>
+                        <option value="Бусад">Бусад</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-medium text-secondary">Төсвийн лимит дүн (₮)</label>
+                    <input type="number" class="form-control shadow-sm fw-bold" id="budget-amount" placeholder="Лимит дүн оруулна уу" min="1" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-medium text-secondary">Хамаарах сар</label>
+                    <input type="month" class="form-control shadow-sm" id="budget-month" required>
+                </div>
+                <button type="submit" class="btn btn-dark w-100 py-2 shadow-sm">
+                    <i class="fa-solid fa-check me-1"></i> Төсөв Хадгалах
+                </button>
+            </form>
+            <hr>
+            <div id="current-budgets-list"></div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script>
-        let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-
-        const form = document.getElementById('transaction-form');
-        const txList = document.getElementById('transaction-list');
-        
-        document.getElementById('tx-date').valueToDate = new Date();
-        document.getElementById('tx-date').value = new Date().toISOString().substr(0, 10);
-
-        function formatMoney(num) {
-            return Number(num).toLocaleString() + ' ₮';
-        }
-
-        function updateSummary() {
-            let income = 0;
-            let expense = 0;
-
-            transactions.forEach(tx => {
-                if (tx.type === 'income') {
-                    income += tx.amount;
-                } else {
-                    expense += tx.amount;
-                }
-            });
-
-            const balance = income - expense;
-
-            document.getElementById('total-balance').innerText = formatMoney(balance);
-            document.getElementById('total-income').innerText = formatMoney(income);
-            document.getElementById('total-expense').innerText = formatMoney(expense);
-        }
-
-        function renderTransactions() {
-            txList.innerHTML = '';
-
-            if (transactions.length === 0) {
-                txList.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center text-muted py-4 small">
-                            Одоогоор гүйлгээ бүртгэгдээгүй байна.
-                        </td>
-                    </tr>`;
-                return;
-            }
-
-            transactions.slice().reverse().forEach((tx, index) => {
-                const actualIndex = transactions.length - 1 - index;
-                const tr = document.createElement('tr');
-                
-                const typeBadge = tx.type === 'income' 
-                    ? '<span class="badge badge-income">Орлого</span>' 
-                    : '<span class="badge badge-expense">Зарлага</span>';
-                
-                const amountClass = tx.type === 'income' ? 'text-success fw-bold' : 'text-danger fw-bold';
-                const amountSign = tx.type === 'income' ? '+' : '-';
-
-                tr.innerHTML = `
-                    <td>${tx.date}</td>
-                    <td><span class="text-dark fw-medium">${tx.category}</span></td>
-                    <td class="text-muted small">${tx.desc}</td>
-                    <td>${typeBadge}</td>
-                    <td class="text-end ${amountClass}">${amountSign} ${formatMoney(tx.amount)}</td>
-                    <td class="text-center">
-                        <button onclick="deleteTransaction(${actualIndex})" class="btn btn-sm btn-link text-danger p-0">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </td>
-                `;
-                txList.appendChild(tr);
-            });
-        }
-
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const newTx = {
-                type: document.getElementById('tx-type').value,
-                category: document.getElementById('tx-category').value,
-                amount: parseFloat(document.getElementById('tx-amount').value),
-                date: document.getElementById('tx-date').value,
-                desc: document.getElementById('tx-desc').value
-            };
-
-            transactions.push(newTx);
-            localStorage.setItem('transactions', JSON.stringify(transactions));
-            
-            document.getElementById('tx-amount').value = '';
-            document.getElementById('tx-desc').value = '';
-
-            init();
-        });
-
-        function deleteTransaction(index) {
-            if(confirm('Энэ гүйлгээг устгахдаа итгэлтэй байна уу?')) {
-                transactions.splice(index, 1);
-                localStorage.setItem('transactions', JSON.stringify(transactions));
-                init();
-            }
-        }
-
-        function clearAll() {
-            if(confirm('Бүх бүртгэлийг устгах уу?')) {
-                transactions = [];
-                localStorage.removeItem('transactions');
-                init();
-            }
-        }
-
-        function init() {
-            renderTransactions();
-            updateSummary();
-        }
-
-        init();
-    </script>
+    <script type="module" src="js/dashboard.js"></script>
 </body>
 </html>
